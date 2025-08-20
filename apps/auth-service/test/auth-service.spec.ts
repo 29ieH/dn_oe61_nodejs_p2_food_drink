@@ -15,6 +15,7 @@ import * as classValidator from 'class-validator';
 import { AuthProvider, Provider } from '../../user-service/generated/prisma';
 import { AuthService } from '../src/auth-service.service';
 import { PayLoadJWT } from '@app/common/dto/user/sign-token.dto';
+import { UserStatus } from '@app/common/enums/user-status.enum';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -47,155 +48,210 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     jest.spyOn(classValidator, 'validateOrReject').mockResolvedValue();
   });
-  it('should login successfully with correct credentials', async () => {
-    const dto: LoginRequestDto = { email: 'test@example.com', password: '123456' };
-    const userByEmail: UserResponse = {
-      id: 1,
-      name: 'Test User',
-      userName: 'testuser',
-      email: 'test@example.com',
-      imageUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: null,
-      role: 'USER',
-      authProviders: [
-        { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
-      ],
-    };
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(userByEmail);
-    jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
-    const result = await service.login(dto);
-    expect(result.data?.accessToken).toBe('fake-jwt-token');
-    expect(result.data?.user.email).toBe('test@example.com');
-  });
-  it('should handle login for a user without an email', async () => {
-    const userWithoutEmail: UserResponse = {
-      id: 1,
-      name: 'Test User',
-      userName: 'testuser',
-      email: null,
-      imageUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: null,
-      role: 'USER',
-      authProviders: [
-        { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
-      ],
-    };
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(userWithoutEmail);
-    jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
-    const result = await service.login({ email: 'test@example.com', password: '123456' });
-    expect(result.data?.accessToken).toBe('fake-jwt-token');
-    expect(result.data?.user.email).toBe('');
-  });
-  it('should throw unauthorized if user not found', async () => {
-    const dto: LoginRequestDto = { email: 'notfound@example.com', password: '123456' };
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(null);
-    await expect(service.login(dto)).rejects.toThrow(
-      new TypedRpcException({
-        code: HTTP_ERROR_CODE.UNAUTHORIZED,
-        message: 'common.auth.invalidCredentials',
-      }),
-    );
-  });
-
-  it('should throw unauthorized if passwordLocal is missing', async () => {
-    const dto: LoginRequestDto = { email: 'nopass@example.com', password: '123456' };
-    const user: UserResponse = {
-      id: 1,
-      name: 'Test User',
-      userName: 'testuser',
-      email: 'test@example.com',
-      imageUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: null,
-      role: 'USER',
-      authProviders: [],
-    };
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
-    await expect(service.login(dto)).rejects.toThrow(
-      new TypedRpcException({
-        code: HTTP_ERROR_CODE.UNAUTHORIZED,
-        message: 'common.auth.invalidCredentials',
-      }),
-    );
-  });
-  it('should throw unauthorized if password does not match', async () => {
-    const dto: LoginRequestDto = { email: 'wrongpass@example.com', password: 'wrongpass' };
-    const user: UserResponse = {
-      id: 1,
-      name: 'Test User',
-      userName: 'testuser',
-      email: 'test@example.com',
-      imageUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: null,
-      role: 'USER',
-      authProviders: [
-        { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
-      ],
-    };
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
-    jest.spyOn(service, 'comparePassword').mockResolvedValue(false);
-    await expect(service.login(dto)).rejects.toThrow(
-      new TypedRpcException({
-        code: HTTP_ERROR_CODE.UNAUTHORIZED,
-        message: 'common.auth.invalidCredentials',
-      }),
-    );
-  });
-  it('should throw internal server error if jwt signing fails', async () => {
-    const dto: LoginRequestDto = { email: 'test@example.com', password: '123456' };
-    const user: UserResponse = {
-      id: 1,
-      name: 'Test User',
-      userName: 'testuser',
-      email: 'test@example.com',
-      imageUrl: undefined,
-      createdAt: new Date(),
-      updatedAt: null,
-      role: 'USER',
-      authProviders: [
-        { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
-      ],
-    };
-    const rpcError = {
-      code: HTTP_ERROR_CODE.INTERNAL_SERVER_ERROR,
-      message: 'common.errors.internalServerError',
-    } as const;
-    jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
-    jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
-    jest
-      .spyOn(service['jwtService'], 'signAsync')
-      .mockRejectedValue(new TypedRpcException(rpcError));
-    try {
-      await service.login(dto);
-    } catch (error) {
-      expect(error).toBeInstanceOf(TypedRpcException);
-      expect((error as TypedRpcException).getError()).toEqual(rpcError);
-      expect((error as TypedRpcException).getError().code).toEqual(
-        HTTP_ERROR_CODE.INTERNAL_SERVER_ERROR,
+  describe('Login', () => {
+    it('should login successfully with correct credentials', async () => {
+      const dto: LoginRequestDto = { email: 'test@example.com', password: '123456' };
+      const userByEmail: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [
+          { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
+        ],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(userByEmail);
+      jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
+      const result = await service.login(dto);
+      expect(result.data?.accessToken).toBe('fake-jwt-token');
+      expect(result.data?.user.email).toBe('test@example.com');
+    });
+    it('should handle login for a user without an email', async () => {
+      const userWithoutEmail: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: null,
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [
+          { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
+        ],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(userWithoutEmail);
+      jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
+      const result = await service.login({ email: 'test@example.com', password: '123456' });
+      expect(result.data?.accessToken).toBe('fake-jwt-token');
+      expect(result.data?.user.email).toBe('');
+    });
+    it('should throw unauthorized if user not found', async () => {
+      const dto: LoginRequestDto = { email: 'notfound@example.com', password: '123456' };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(null);
+      await expect(service.login(dto)).rejects.toThrow(
+        new TypedRpcException({
+          code: HTTP_ERROR_CODE.UNAUTHORIZED,
+          message: 'common.auth.invalidCredentials',
+        }),
       );
-    }
+    });
+    it('should throw unauthorized if passwordLocal is missing', async () => {
+      const dto: LoginRequestDto = { email: 'nopass@example.com', password: '123456' };
+      const user: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
+      await expect(service.login(dto)).rejects.toThrow(
+        new TypedRpcException({
+          code: HTTP_ERROR_CODE.UNAUTHORIZED,
+          message: 'common.auth.invalidCredentials',
+        }),
+      );
+    });
+    it('should throw unauthorized if password does not match', async () => {
+      const dto: LoginRequestDto = { email: 'wrongpass@example.com', password: 'wrongpass' };
+      const user: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [
+          { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
+        ],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
+      jest.spyOn(service, 'comparePassword').mockResolvedValue(false);
+      await expect(service.login(dto)).rejects.toThrow(
+        new TypedRpcException({
+          code: HTTP_ERROR_CODE.UNAUTHORIZED,
+          message: 'common.auth.invalidCredentials',
+        }),
+      );
+    });
+    it('should throw internal server error if jwt signing fails', async () => {
+      const dto: LoginRequestDto = { email: 'test@example.com', password: '123456' };
+      const user: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [
+          { id: 1, provider: Provider.LOCAL, password: 'hashed-password' } as AuthProvider,
+        ],
+      };
+      const rpcError = {
+        code: HTTP_ERROR_CODE.INTERNAL_SERVER_ERROR,
+        message: 'common.errors.internalServerError',
+      } as const;
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
+      jest.spyOn(service, 'comparePassword').mockResolvedValue(true);
+      jest
+        .spyOn(service['jwtService'], 'signAsync')
+        .mockRejectedValue(new TypedRpcException(rpcError));
+      try {
+        await service.login(dto);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError()).toEqual(rpcError);
+        expect((error as TypedRpcException).getError().code).toEqual(
+          HTTP_ERROR_CODE.INTERNAL_SERVER_ERROR,
+        );
+      }
+    });
+    it('should propagate unauthorized if inactive user', async () => {
+      const dto: LoginRequestDto = { email: 'nopass@example.com', password: '123456' };
+      const user: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: null,
+        role: 'USER',
+        status: UserStatus.INACTIVE.toString(),
+        authProviders: [],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
+      await expect(service.login(dto)).rejects.toThrow(
+        new TypedRpcException({
+          code: HTTP_ERROR_CODE.UNAUTHORIZED,
+          message: 'common.auth.inactiveAccount',
+        }),
+      );
+    });
+    it('should propagate unauthorized if user deleted', async () => {
+      const dto: LoginRequestDto = { email: 'nopass@example.com', password: '123456' };
+      const user: UserResponse = {
+        id: 1,
+        name: 'Test User',
+        userName: 'testuser',
+        email: 'test@example.com',
+        imageUrl: undefined,
+        createdAt: new Date(),
+        updatedAt: null,
+        deletedAt: new Date(),
+        role: 'USER',
+        status: UserStatus.ACTIVE.toString(),
+        authProviders: [],
+      };
+      jest.spyOn(micro, 'callMicroservice').mockResolvedValue(user);
+      await expect(service.login(dto)).rejects.toThrow(
+        new TypedRpcException({
+          code: HTTP_ERROR_CODE.UNAUTHORIZED,
+          message: 'common.auth.invalidCredentials',
+        }),
+      );
+    });
+    it('should propagate validation error coming from UserService', async () => {
+      const dto: LoginRequestDto = { email: 'invalid-email.com', password: '123' };
+      jest.spyOn(classValidator, 'validateOrReject').mockResolvedValue();
+      const rpcError = {
+        code: HTTP_ERROR_CODE.BAD_REQUEST,
+        message: 'common.errors.validationError',
+      } as const;
+      jest.spyOn(micro, 'callMicroservice').mockRejectedValueOnce(new TypedRpcException(rpcError));
+      try {
+        await service.login(dto);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError()).toEqual(rpcError);
+        expect((error as TypedRpcException).getError().code).toEqual(HTTP_ERROR_CODE.BAD_REQUEST);
+      }
+    });
   });
-
-  it('should propagate validation error coming from UserService', async () => {
-    const dto: LoginRequestDto = { email: 'invalid-email.com', password: '123' };
-    jest.spyOn(classValidator, 'validateOrReject').mockResolvedValue();
-    const rpcError = {
-      code: HTTP_ERROR_CODE.BAD_REQUEST,
-      message: 'common.errors.validationError',
-    } as const;
-    jest.spyOn(micro, 'callMicroservice').mockRejectedValueOnce(new TypedRpcException(rpcError));
-    try {
-      await service.login(dto);
-    } catch (error) {
-      expect(error).toBeInstanceOf(TypedRpcException);
-      expect((error as TypedRpcException).getError()).toEqual(rpcError);
-      expect((error as TypedRpcException).getError().code).toEqual(HTTP_ERROR_CODE.BAD_REQUEST);
-    }
-  });
-
   describe('comparePassword', () => {
     it('should return true when bcrypt.compare resolves true', async () => {
       jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true as never);
@@ -208,13 +264,14 @@ describe('AuthService', () => {
       expect(result).toBe(false);
     });
   });
-
   describe('signJwtToken', () => {
     const data: PayLoadJWT = {
       id: 1,
       name: 'John',
       role: 'USER',
       providerName: 'LOCAL',
+      deletedAt: null,
+      status: UserStatus.ACTIVE.toString(),
       email: 'john@example.com',
     };
 
@@ -268,7 +325,9 @@ describe('AuthService', () => {
       name: 'Jane',
       role: 'USER',
       providerName: 'LOCAL',
+      status: UserStatus.ACTIVE.toString(),
       email: 'jane@example.com',
+      deletedAt: null,
     };
 
     it('should throw RpcException when data is null', async () => {

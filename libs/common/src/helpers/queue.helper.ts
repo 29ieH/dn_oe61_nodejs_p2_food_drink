@@ -1,4 +1,6 @@
 import { Queue, JobOptions } from 'bull';
+import { ATTEMPTS_DEFAULT, BACKOFF_TYPE_DEFAULT } from '../constant/queue.constant';
+import { DELAY_RETRY_DEFAULT } from '../constant/rpc.constants';
 
 export async function addJobWithRetry<T>(
   queue: Queue,
@@ -7,10 +9,10 @@ export async function addJobWithRetry<T>(
   options?: Partial<JobOptions>,
 ): Promise<void> {
   await queue.add(event, data, {
-    attempts: 3,
+    attempts: ATTEMPTS_DEFAULT,
     backoff: {
-      type: 'exponential',
-      delay: 10000,
+      type: BACKOFF_TYPE_DEFAULT,
+      delay: DELAY_RETRY_DEFAULT,
     },
     removeOnComplete: true,
     removeOnFail: false,

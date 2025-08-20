@@ -17,6 +17,7 @@ import { AuthController } from '../src/auth/auth.controller';
 import { AuthService } from '../src/auth/auth.service';
 import { TwitterProfileDto } from '@app/common/dto/twitter-profile.dto';
 import { GoogleProfileDto } from '@app/common/dto/google-profile.dro';
+import { UserStatus } from '@app/common/enums/user-status.enum';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -322,7 +323,15 @@ describe('AuthController', () => {
       const token = 'activation-token';
       const expected: BaseResponse<UserResponse> = {
         statusKey: StatusKey.SUCCESS,
-        data: { id: 1, email: 'a@mail.com', name: 'A', userName: 'a', role: 'user' },
+        data: {
+          id: 1,
+          email: 'a@mail.com',
+          name: 'A',
+          userName: 'a',
+          role: 'user',
+          deletedAt: null,
+          status: UserStatus.ACTIVE.toString(),
+        },
       } as const;
       (authService.completeRegister as jest.Mock).mockResolvedValue(expected);
 

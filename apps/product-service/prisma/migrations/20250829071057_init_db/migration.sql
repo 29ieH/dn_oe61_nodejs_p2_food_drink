@@ -13,6 +13,7 @@ CREATE TABLE `categories` (
 -- CreateTable
 CREATE TABLE `products` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `skuId` VARCHAR(30) NOT NULL,
     `name` VARCHAR(50) NOT NULL,
     `description` VARCHAR(191) NULL,
     `status` ENUM('SOLD_OUT', 'IN_STOCK', 'PRE_SALE') NOT NULL DEFAULT 'IN_STOCK',
@@ -21,6 +22,7 @@ CREATE TABLE `products` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NULL,
 
+    UNIQUE INDEX `products_skuId_key`(`skuId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -106,7 +108,6 @@ CREATE TABLE `orders` (
     `updatedAt` DATETIME(3) NULL,
     `userId` INTEGER NOT NULL,
 
-    UNIQUE INDEX `orders_userId_key`(`userId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -132,8 +133,7 @@ CREATE TABLE `order_items` (
     `orderId` INTEGER NOT NULL,
     `productVariantId` INTEGER NOT NULL,
 
-    UNIQUE INDEX `order_items_orderId_key`(`orderId`),
-    UNIQUE INDEX `order_items_productVariantId_key`(`productVariantId`),
+    UNIQUE INDEX `order_items_orderId_productVariantId_key`(`orderId`, `productVariantId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -147,8 +147,7 @@ CREATE TABLE `reviews` (
     `userId` INTEGER NOT NULL,
     `productId` INTEGER NOT NULL,
 
-    UNIQUE INDEX `reviews_userId_key`(`userId`),
-    UNIQUE INDEX `reviews_productId_key`(`productId`),
+    UNIQUE INDEX `reviews_userId_productId_key`(`userId`, `productId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

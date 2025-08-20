@@ -2,16 +2,12 @@ import { HTTP_ERROR_CODE } from '@app/common/enums/errors/http-error-code';
 import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
 import { CustomLogger } from '@app/common/logger/custom-logger.service';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import * as streamifier from 'streamifier';
 
 @Injectable()
 export class CloudinaryService {
-  constructor(
-    private readonly loggerService: CustomLogger,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly loggerService: CustomLogger) {}
   private readonly DEFAULT_FOLDER = process.env.DEFAULT_FOLDER || 'foods_and_drinks';
   async uploadImage(
     file: Express.Multer.File,

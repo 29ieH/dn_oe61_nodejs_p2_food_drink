@@ -1,12 +1,12 @@
 import { BullModule } from '@nestjs/bull';
 import { forwardRef, Logger, Module } from '@nestjs/common';
-import { CloudinaryModule } from '../cloudinary.module';
+import { CloudinaryConsoleModule } from '../cloudinary.module';
 import { CloudUploadQueueProcessor } from './cloud-upload-queue.processor';
 import { CloudUploadQueueService } from './cloud-upload-queue.service';
 
 @Module({
   imports: [
-    forwardRef(() => CloudinaryModule),
+    forwardRef(() => CloudinaryConsoleModule),
     BullModule.registerQueue({
       name: 'cloudUploadQueue',
     }),

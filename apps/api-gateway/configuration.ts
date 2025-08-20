@@ -23,4 +23,10 @@ export default () => ({
     appSecret: process.env.TWITTER_CLIENT_SECRET,
     callbackUrl: process.env.TWITTER_CALLBACK_URL,
   },
+  session: {
+    secret: process.env.SESSION_SECRET,
+  },
+  uploadImage: {
+    maxSizeMB: process.env.UPLOAD_IMAGE_MAX_SIZE_MB,
+  },
 });

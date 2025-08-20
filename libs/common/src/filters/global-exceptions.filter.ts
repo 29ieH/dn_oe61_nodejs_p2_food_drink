@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { I18nService } from 'nestjs-i18n';
 import { UNKNOWN_ERROR_CODE } from '../constant/error-code.constant';
@@ -14,6 +15,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly i18nService: I18nService,
     private readonly loggerService: CustomLogger,
+    private readonly configService: ConfigService,
   ) {}
   async catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -30,6 +32,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message = exception.message;
       const errorResponse = exception.getResponse();
       this.loggerService.debug('Response error validation:: ', JSON.stringify(errorResponse));
+      if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+        status = HttpStatus.BAD_REQUEST;
+        code = HTTP_ERROR_NAME.BAD_REQUEST;
+        message = this.i18nService.translate('common.errors.invalidSizeImage', {
+          args: {
+            maxImageSizeMB: this.configService.get<number>('uploadImage.maxSizeMB'),
+          },
+        });
+        return response.status(status).json({
+          code,
+          message,
+          timestamp: new Date().toISOString(),
+          details: detail,
+        });
+      }
       if (typeof errorResponse === 'string') {
         message = this.i18nService.translate(errorResponse);
         code = HttpStatus[status];
@@ -40,7 +57,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           statusCode,
           ...rest
         } = errorResponse as Record<string, unknown>;
-        message = (msg as string) ? this.i18nService.translate(msg as string) : HTTP_EXCEPTION_CODE;
+        message = (msg as string) ?? HTTP_EXCEPTION_CODE;
         detail = Object.keys(rest).length > 0 ? rest : undefined;
         code = (typeof err === 'string' ? err : HttpStatus[status]) ?? HTTP_EXCEPTION_CODE;
         status = typeof statusCode === 'number' ? statusCode : status;
@@ -58,7 +75,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     } else if (isRpcError(exception)) {
       code = exception.code;
       status = httpErrorCodeToHttpStatus(exception.code);
-      message = this.i18nService.translate(exception.message);
+      message = this.i18nService.translate(exception.message, {
+        args: exception.args || {},
+      });
       detail = exception.details;
     } else if (exception instanceof Error) {
       this.loggerService.error('[Internal Server Error]', `Details:: ${exception.stack}`);

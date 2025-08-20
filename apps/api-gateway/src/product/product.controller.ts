@@ -9,6 +9,10 @@ import { ProductResponse } from '@app/common/dto/product/response/product-respon
 import { AuthRoles } from '@app/common/decorators/auth-role.decorator';
 import { Role } from '@app/common/enums/roles/users.enum';
 import { COLUMN } from '@app/common/constant/column.constant';
+import { CurrentUser } from '@app/common';
+import { AccessTokenPayload } from '@app/common/interfaces/token-payload';
+import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
+import { AddProductPayload } from '@app/common/dto/product/requests/add-product-payload';
 
 @Controller('products')
 export class ProductController {
@@ -26,5 +30,16 @@ export class ProductController {
     @UploadedFiles() files: Array<Express.Multer.File>,
   ): Promise<BaseResponse<ProductResponse>> {
     return this.productService.create(input, files);
+  }
+  @Post('cart')
+  async addProductCart(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body() payload: AddProductPayload,
+  ) {
+    const dto: AddProductCartRequest = {
+      userId: user.id,
+      ...payload,
+    };
+    return this.productService.addProductCart(dto);
   }
 }

@@ -56,8 +56,10 @@ describe('AuthService - loginFromFacebook', () => {
       email: 'test@example.com',
       imageUrl: undefined,
       createdAt: new Date(),
+      deletedAt: null,
       updatedAt: null,
       role: 'USER',
+      status: 'ACTIVE',
       authProviders: [],
     };
 
@@ -86,7 +88,9 @@ describe('AuthService - loginFromFacebook', () => {
       imageUrl: undefined,
       createdAt: new Date(),
       updatedAt: null,
+      deletedAt: null,
       role: 'USER',
+      status: 'ACTIVE',
       authProviders: [],
     };
 

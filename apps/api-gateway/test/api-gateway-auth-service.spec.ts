@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { TwitterProfileDto } from '@app/common/dto/twitter-profile.dto';
 import { GoogleProfileDto } from '@app/common/dto/google-profile.dro';
 import { BadRequestException } from '@nestjs/common';
+import { UserStatus } from '@app/common/enums/user-status.enum';
 
 afterEach(() => {
   jest.clearAllMocks();
@@ -387,6 +388,8 @@ describe('ApiGateway AuthService', () => {
         email: 'test@example.com',
         name: 'Test User',
         userName: 'testuser',
+        status: UserStatus.ACTIVE.toString(),
+        deletedAt: null,
         role: 'user',
       };
     });
@@ -455,6 +458,8 @@ describe('ApiGateway AuthService', () => {
         email: 'test@example.com',
         name: 'Test User',
         userName: 'testuser',
+        status: UserStatus.ACTIVE.toString(),
+        deletedAt: null,
         role: 'user',
       };
 

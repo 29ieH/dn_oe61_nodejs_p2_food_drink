@@ -4,6 +4,7 @@
     "isString": "{field} phải là chuỗi",
     "isEmail": "{field} phải là email hợp lệ",
     "isNotEmpty": "{field} không được để trống",
+    "min": "{field} phải lớn hơn hoặc bằng {min}",
     "minLength": "{field} phải có ít nhất {min} ký tự",
     "maxLength": "{field} phải có nhiều nhất {max} ký tự",
     "isDate":"{field} phải là ngày hợp lệ",
@@ -15,6 +16,8 @@
   },
   "product": {
     "invalidCredentials": "Thông tin sản phẩm không chính xác",
+    "notFound":"Sản phẩm không tồn tại",
+    "quantityNotEnough":"Số lượng sản phẩm không đủ",
     "action": {
       "create": {
         "success": "Tạo mới sản phẩm thành công"
@@ -34,6 +37,7 @@
   },
   "auth": {
     "invalidCredentials": "Thông tin người dùng không chính xác",
+    "inactiveAccount": "Tài khoản không hoạt động",
     "action": {
       "login": {
         "success": "Đăng nhập thành công"
@@ -85,14 +89,29 @@
     "unauthorized": "Bạn không có quyền truy cập"
   },
   "user":{
+    "notFound":"Không tìm thấy người dùng",
     "phoneNumberExist":"Số điện thoại đã tồn tại",
-    "emailExist":"Email đã tồn tại"
+    "emailExist":"Email đã tồn tại",
+    "someUserNotExist":"Một số người dùng không tồn tại. UserIds: [{missingIds}]"
   },
   "adminuser":{
     "action":{
       "create":{
         "success":"Tạo tài khoản thành công",
         "error":"Tạo tài khoản thất bại, vui lòng thử lại sau"
+      },
+      "updateRoles":{
+        "success":"Cập nhật vai trò thành công",
+        "failed":"Cập nhật vai trò thất bại, vui lòng thử lại sau"
+      },
+      "updateStatuses":{
+        "success":"Cập nhật trạng thái thành công",
+        "failed":"Cập nhật trạng thái thất bại, vui lòng thử lại sau",
+        "unchanged":"Không có trạng thái nào được thay đổi"
+      },
+      "delete":{
+        "success":"Xóa tài khoản thành công",
+        "failed":"Xóa tài khoản thất bại, vui lòng thử lại sau"
       }
     }
   },
@@ -140,7 +159,7 @@
       "dataNotFound": "Dữ liệu không hợp lệ"
     },
     "invalidTypeImage":"Chỉ chấp nhận định dạng hình ảnh là |jpg|jpeg|png|gif|",
-    "invalidSizeImage":"Kích thước hình ảnh phải nhỏ hơn 2MB",
+    "invalidSizeImage":"Kích thước hình ảnh phải nhỏ hơn {maxImageSizeMB} MB",
     "cloudinary": {
       "fileExists": "Tệp với tên '{fileName}' đã tồn tại."
     }

@@ -7,6 +7,9 @@ import { UserService } from './user-service.service';
 import { ProfileFacebookUser } from '@app/common/dto/user/requests/facebook-user-dto.request';
 import { CreateUserDto } from '@app/common/dto/user/create-user.dto';
 import { UserCreationRequest } from '@app/common/dto/user/requests/user-creation.request';
+import { UserUpdateRoleRequest } from '@app/common/dto/user/requests/user-update-role.request';
+import { UserUpdateStatusRequest } from '@app/common/dto/user/requests/user-update-status.request';
+import { SoftDeleteUserRequest } from '@app/common/dto/user/requests/soft-delete-user.request';
 
 @Controller()
 export class UserServiceController {
@@ -47,5 +50,17 @@ export class UserServiceController {
   @MessagePattern(UserMsgPattern.ADMIN_CREATE_USER)
   async adminCreateUser(@Payload() dto: UserCreationRequest) {
     return await this.userService.create(dto);
+  }
+  @MessagePattern(UserMsgPattern.ADMIN_UPDATE_ROLE)
+  async adminUpdateRole(@Payload() dto: UserUpdateRoleRequest) {
+    return await this.userService.updateRoles(dto);
+  }
+  @MessagePattern(UserMsgPattern.ADMIN_UPDATE_STATUS)
+  async adminUpdateStatus(@Payload() dto: UserUpdateStatusRequest) {
+    return await this.userService.updateStatuses(dto);
+  }
+  @MessagePattern(UserMsgPattern.ADMIN_DELETE_USER)
+  async adminDeleteUser(@Payload() dto: SoftDeleteUserRequest) {
+    return await this.userService.delete(dto);
   }
 }

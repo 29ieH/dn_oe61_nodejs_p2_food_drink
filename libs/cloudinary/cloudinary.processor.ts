@@ -9,7 +9,7 @@ import { CloudinaryEvent } from '@app/common/enums/queue/cloudinary-event.enum';
 @Injectable()
 export class CloudinaryProcessor {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
-  @Process(CloudinaryEvent.DELETE_IMAGE)
+  @Process({ name: CloudinaryEvent.DELETE_IMAGE, concurrency: 10 })
   async handleDeleteImage(job: Job<DeleteImagePayload>) {
     const { publicId } = job.data;
     return await this.cloudinaryService.deleteImage(publicId);

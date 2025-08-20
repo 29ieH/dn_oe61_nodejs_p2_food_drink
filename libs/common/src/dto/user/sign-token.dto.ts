@@ -13,11 +13,12 @@ export class PayLoadJWT {
 
   @IsString()
   email?: string;
-
+  @IsString()
+  status: string;
+  deletedAt: Date | null;
   @IsString()
   providerName: string;
 }
-
 export class PayLoadJWTComplete {
   @IsString()
   token: string;

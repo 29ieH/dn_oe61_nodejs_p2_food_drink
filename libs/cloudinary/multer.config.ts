@@ -12,9 +12,6 @@ export const multerConfig: MulterOptions = {
     if (!imageRegex.test(file.mimetype)) {
       return callback(new BadRequestException('common.errors.invalidTypeImage'), false);
     }
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      return callback(new BadRequestException('common.errors.invalidSizeImage'), false);
-    }
     callback(null, true);
   },
 };

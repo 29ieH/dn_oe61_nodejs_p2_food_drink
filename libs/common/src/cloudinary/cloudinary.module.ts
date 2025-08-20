@@ -43,4 +43,4 @@ import { BullModule } from '@nestjs/bull';
   providers: [CloudinaryProvider, CloudinaryService],
   exports: [CloudinaryService],
 })
-export class CloudinaryModule {}
+export class CloudinaryConsoleModule {}

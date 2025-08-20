@@ -12,6 +12,10 @@ import { I18nService } from 'nestjs-i18n';
 import { buildBaseResponse } from '@app/common/utils/data.util';
 import { StatusKey } from '@app/common/enums/status-key.enum';
 import { CloudinaryService } from '@app/common/cloudinary/cloudinary.service';
+import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
+import { CartSummaryResponse } from '@app/common/dto/product/response/cart-summary.response';
+import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
+import { HTTP_ERROR_CODE } from '@app/common/enums/errors/http-error-code';
 
 @Injectable()
 export class ProductService {
@@ -60,11 +64,25 @@ export class ProductService {
         retries: RETRIES_DEFAULT,
       },
     );
-
     if (!create) {
       throw new BadRequestException(this.i18nService.translate('common.product.error.failed'));
     }
-
     return buildBaseResponse<ProductResponse>(StatusKey.SUCCESS, create);
+  }
+  async addProductCart(payload: AddProductCartRequest) {
+    if (!payload.userId)
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.UNAUTHORIZED,
+        message: 'common.error.unauthorized',
+      });
+    return await callMicroservice<BaseResponse<CartSummaryResponse>>(
+      this.productClient.send(ProductPattern.ADD_PRODUCT_CART, payload),
+      PRODUCT_SERVICE,
+      this.loggerService,
+      {
+        timeoutMs: TIMEOUT_MS_DEFAULT,
+        retries: RETRIES_DEFAULT,
+      },
+    );
   }
 }

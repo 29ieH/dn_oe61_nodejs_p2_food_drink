@@ -44,6 +44,8 @@ describe('SetAccessTokenInterceptor', () => {
           userName: 'test',
           createdAt: new Date(),
           role: 'user',
+          status: 'ACTIVE',
+          deletedAt: null,
           authProviders: [],
         },
       },

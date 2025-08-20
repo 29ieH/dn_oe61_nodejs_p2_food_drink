@@ -1,8 +1,8 @@
-import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
 import { Logger } from '@nestjs/common';
 import { Readable } from 'stream';
 import { CloudinaryService } from '../cloudinary.service';
+import { Process, Processor } from '@nestjs/bull';
 
 export interface CloudUploadJobData {
   bufferBase64: string;
@@ -17,8 +17,7 @@ export class CloudUploadQueueProcessor {
     private readonly cloudinaryService: CloudinaryService,
     private readonly logger: Logger,
   ) {}
-
-  @Process({ name: 'cloudinaryUpload', concurrency: 10 })
+  @Process('cloudinaryUpload')
   async handleUpload(job: Job<CloudUploadJobData>) {
     this.logger.log(`Processing cloud upload job id=${job.id}`);
     const { bufferBase64, originalname, mimetype, folder } = job.data;

@@ -13,7 +13,13 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(
     session({
-      secret: configService.get<string>('session.secret', 'session-secret-123'),
+      secret: (() => {
+        const sessionSecret = configService.get<string>('session.secret');
+        if (!sessionSecret) {
+          throw new Error('Session secret is not defined');
+        }
+        return sessionSecret;
+      })(),
     }),
   );
   app.use(passport.initialize());

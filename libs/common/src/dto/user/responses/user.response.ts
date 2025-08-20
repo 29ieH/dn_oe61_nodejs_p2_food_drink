@@ -10,6 +10,8 @@ export class UserResponse {
   imageUrl?: string;
   createdAt?: Date;
   updatedAt?: Date | null;
+  deletedAt: Date | null;
   role: string;
+  status: string;
   authProviders?: AuthProvider[];
 }

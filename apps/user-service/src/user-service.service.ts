@@ -1,32 +1,49 @@
+import { CreateUserDto } from '@app/common/dto/user/create-user.dto';
 import { ProfileFacebookUser } from '@app/common/dto/user/requests/facebook-user-dto.request';
 import { UserByEmailRequest } from '@app/common/dto/user/requests/user-by-email.request';
+import { UserCreationRequest } from '@app/common/dto/user/requests/user-creation.request';
+import { UserUpdateRoleRequest } from '@app/common/dto/user/requests/user-update-role.request';
+import { UserUpdateStatusRequest } from '@app/common/dto/user/requests/user-update-status.request';
+import { UserCreationResponse } from '@app/common/dto/user/responses/user-creation.response';
+import { UserSummaryResponse } from '@app/common/dto/user/responses/user-summary.response';
 import { UserResponse } from '@app/common/dto/user/responses/user.response';
+import { HTTP_ERROR_CODE } from '@app/common/enums/errors/http-error-code';
 import { RoleEnum } from '@app/common/enums/role.enum';
+import { StatusKey } from '@app/common/enums/status-key.enum';
+import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
+import { BaseResponse } from '@app/common/interfaces/data-type';
 import { CustomLogger } from '@app/common/logger/custom-logger.service';
 import { handlePrismaError } from '@app/common/utils/prisma-client-error';
 import { PrismaService } from '@app/prisma';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { RpcException } from '@nestjs/microservices';
+import * as bcrypt from 'bcrypt';
+import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { randomUUID } from 'crypto';
-import { Injectable } from '@nestjs/common';
-import { AuthProvider, Prisma, PrismaClient, Provider, Role, User } from '../generated/prisma';
-import { CreateUserDto } from '@app/common/dto/user/create-user.dto';
-import { RpcException } from '@nestjs/microservices';
-import { plainToInstance } from 'class-transformer';
+import {
+  AuthProvider,
+  Prisma,
+  PrismaClient,
+  Provider,
+  Role,
+  User,
+  UserProfile,
+} from '../generated/prisma';
 import { INCLUDE_AUTH_PROVIDER_USER } from './constants/include-auth-user';
-import { UserCreationRequest } from '@app/common/dto/user/requests/user-creation.request';
-import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
-import { HTTP_ERROR_CODE } from '@app/common/enums/errors/http-error-code';
-import { BaseResponse } from '@app/common/interfaces/data-type';
-import * as bcrypt from 'bcrypt';
-import { StatusKey } from '@app/common/enums/status-key.enum';
-import { UserCreationResponse } from '@app/common/dto/user/responses/user-creation.response';
-import { ConfigService } from '@nestjs/config';
+import { SoftDeleteUserRequest } from '@app/common/dto/user/requests/soft-delete-user.request';
+import { SoftDeleteUserResponse } from '@app/common/dto/user/responses/soft-delete-user.response';
+import { buildBaseResponse } from '@app/common/utils/data.util';
+import { DeleteSoftCartRequest } from '@app/common/dto/product/requests/delete-soft-cart.request';
+import { ProductProducer } from './producer/product.producer';
 @Injectable()
 export class UserService {
   constructor(
     private readonly prismaService: PrismaService<PrismaClient>,
     private readonly loggerService: CustomLogger,
     private readonly configService: ConfigService,
+    private readonly productProducer: ProductProducer,
   ) {}
 
   async getUserByEmail(dto: UserByEmailRequest): Promise<UserResponse | null> {
@@ -49,7 +66,9 @@ export class UserService {
       imageUrl: userFindByEmail.imageUrl ?? '',
       createdAt: userFindByEmail.createdAt,
       updatedAt: userFindByEmail.updatedAt,
+      deletedAt: userFindByEmail.deletedAt,
       role: userFindByEmail.role.name,
+      status: userFindByEmail.status,
       authProviders: userFindByEmail.authProviders,
     };
   }
@@ -247,7 +266,9 @@ export class UserService {
       imageUrl: authProvider.user.imageUrl ?? '',
       createdAt: authProvider.user.createdAt,
       updatedAt: authProvider.user.updatedAt,
+      deletedAt: authProvider.user.deletedAt,
       role: authProvider.user.role.name,
+      status: authProvider.user.status,
       authProviders: authProvider.user.authProviders,
     };
   }
@@ -293,7 +314,9 @@ export class UserService {
       imageUrl: user.imageUrl ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt ?? undefined,
+      deletedAt: user.deletedAt,
       role: user.role?.name,
+      status: user.status,
       authProviders: user.authProviders || undefined,
     };
 
@@ -370,8 +393,10 @@ export class UserService {
         name: dataUser.name,
         userName: dataUser.userName,
         role: (dataUser.role as { name: string }).name,
+        status: dataUser.status,
         email: dataUser.email ?? undefined,
         providerName: data.provider,
+        deletedAt: dataUser.deletedAt,
       };
 
       return result;
@@ -403,7 +428,6 @@ export class UserService {
         message: 'common.errors.createUser.roleNotFound',
       });
     }
-
     const result = await this.createUser(dto, role.id);
     if (!result) {
       throw new TypedRpcException({
@@ -416,7 +440,9 @@ export class UserService {
       id: result.id,
       name: result.name,
       userName: result.userName,
+      status: result.status,
       email: result.email ?? undefined,
+      deletedAt: result.deletedAt,
       role: result.role,
     };
 
@@ -459,6 +485,8 @@ export class UserService {
         userName: updated.userName,
         email: updated.email ?? undefined,
         role: updated.role.name,
+        status: updated.status,
+        deletedAt: updated.deletedAt,
         authProviders: updated.authProviders,
       };
 
@@ -477,5 +505,173 @@ export class UserService {
   }
   async hashPassword(rawPassword: string, saltRound: number = 10): Promise<string> {
     return await bcrypt.hash(rawPassword, saltRound);
+  }
+  async updateRoles(dto: UserUpdateRoleRequest): Promise<BaseResponse<UserSummaryResponse[] | []>> {
+    const dtoInstance = plainToInstance(UserUpdateRoleRequest, dto);
+    await validateOrReject(dtoInstance);
+    const userIds = dto.users.map((user) => user.userId);
+    const existingUsers = await this.prismaService.client.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+    const existingIds = existingUsers.map((u) => u.id);
+    const notFoundIds = userIds.filter((id) => !existingIds.includes(id));
+    if (notFoundIds.length > 0) {
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.NOT_FOUND,
+        message: 'common.user.someUserNotExist',
+        args: {
+          missingIds: notFoundIds.join(', '),
+        },
+      });
+    }
+    const usersToUpdate = dto.users.filter((user) => {
+      const found = existingUsers.find((u) => u.id === user.userId);
+      return found && found.role.name !== user.role.toString();
+    });
+    if (usersToUpdate.length === 0) {
+      return {
+        statusKey: StatusKey.UNCHANGED,
+        data: [],
+      };
+    }
+    try {
+      const updateRolesPromise = dto.users.map((user) =>
+        this.prismaService.client.user.update({
+          where: { id: user.userId },
+          data: { role: { connect: { name: user.role } } },
+          include: {
+            role: true,
+            profile: true,
+          },
+        }),
+      );
+      const updatedUsers = await this.prismaService.client.$transaction(updateRolesPromise);
+      const mappedUsers = updatedUsers.map((user) => this.mapToUserSummaryResponse(user));
+      return {
+        statusKey: StatusKey.SUCCESS,
+        data: mappedUsers,
+      };
+    } catch (error) {
+      return handlePrismaError(error, UserService.name, 'updateRoles', this.loggerService);
+    }
+  }
+  async updateStatuses(
+    dto: UserUpdateStatusRequest,
+  ): Promise<BaseResponse<UserSummaryResponse[] | []>> {
+    const dtoInstance = plainToInstance(UserUpdateStatusRequest, dto);
+    await validateOrReject(dtoInstance);
+    const userIds = dto.users.map((user) => user.userId);
+    const existingUsers = await this.prismaService.client.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, status: true },
+    });
+    const existingIds = existingUsers.map((u) => u.id);
+    const notFoundIds = userIds.filter((id) => !existingIds.includes(id));
+
+    if (notFoundIds.length > 0) {
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.NOT_FOUND,
+        message: 'common.user.someUserNotExist',
+        args: { missingIds: notFoundIds.join(', ') },
+      });
+    }
+    const usersToUpdate = dto.users.filter((user) => {
+      const found = existingUsers.find((u) => u.id === user.userId);
+      return found && found.status !== user.status;
+    });
+
+    if (usersToUpdate.length === 0) {
+      return {
+        statusKey: StatusKey.UNCHANGED,
+        data: [],
+      };
+    }
+    try {
+      const updatePromises = usersToUpdate.map((user) =>
+        this.prismaService.client.user.update({
+          where: { id: user.userId },
+          data: { status: user.status },
+          include: {
+            role: true,
+            profile: true,
+          },
+        }),
+      );
+      const updatedUsers = await this.prismaService.client.$transaction(updatePromises);
+      const mappedUsers = updatedUsers.map((user) => this.mapToUserSummaryResponse(user));
+      return {
+        statusKey: StatusKey.SUCCESS,
+        data: mappedUsers,
+      };
+    } catch (error) {
+      return handlePrismaError(error, UserService.name, 'updateStatuses', this.loggerService);
+    }
+  }
+  async delete(dto: SoftDeleteUserRequest): Promise<BaseResponse<SoftDeleteUserResponse>> {
+    const dtoInstance = plainToInstance(SoftDeleteUserRequest, dto);
+    await validateOrReject(dtoInstance);
+    const userById = await this.prismaService.client.user.findUnique({
+      where: { id: dto.userId },
+      select: {
+        id: true,
+        deletedAt: true,
+      },
+    });
+    if (!userById)
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.NOT_FOUND,
+        message: 'common.user.notFound',
+      });
+    if (userById.deletedAt) return buildBaseResponse(StatusKey.UNCHANGED);
+    try {
+      const userUpdated = await this.prismaService.client.user.update({
+        where: { id: dto.userId },
+        data: { deletedAt: new Date() },
+      });
+      const profileExist = await this.prismaService.client.userProfile.findUnique({
+        where: { userId: dto.userId },
+      });
+      if (profileExist) {
+        await this.prismaService.client.userProfile.update({
+          where: { userId: dto.userId },
+          data: { deletedAt: new Date() },
+        });
+      }
+      const payload: SoftDeleteUserResponse = {
+        userId: userUpdated.id,
+        deletedAt: userUpdated.deletedAt ?? new Date(),
+      };
+      const payloadSoftDeleteCart: DeleteSoftCartRequest = {
+        userId: userUpdated.id,
+      };
+      await this.productProducer.addJobSoftDeleteCart(payloadSoftDeleteCart);
+      return buildBaseResponse(StatusKey.SUCCESS, payload);
+    } catch (error) {
+      return handlePrismaError(error, UserService.name, 'delete', this.loggerService);
+    }
+  }
+  private mapToUserSummaryResponse(
+    data: User & { role: Role; profile: UserProfile | null },
+  ): UserSummaryResponse {
+    return {
+      id: data.id,
+      name: data.name,
+      userName: data.userName,
+      email: data.email,
+      phone: data.profile?.phoneNumber,
+      address: data.profile?.address,
+      isActive: data.isActive,
+      imageUrl: data.imageUrl,
+      status: data.status,
+      role: data.role.name,
+    };
   }
 }

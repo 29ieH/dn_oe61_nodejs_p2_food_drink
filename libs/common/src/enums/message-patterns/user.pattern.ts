@@ -8,4 +8,7 @@ export enum UserMsgPattern {
   CHANGE_IS_ACTIVE = 'CHANGE_IS_ACTIVE',
   CREATE_USER = 'user.createUser',
   ADMIN_CREATE_USER = 'admin.user.createUser',
+  ADMIN_UPDATE_ROLE = 'admin.user.updateRole',
+  ADMIN_UPDATE_STATUS = 'admin.user.updateStatus',
+  ADMIN_DELETE_USER = 'admin.user.deleteUser',
 }

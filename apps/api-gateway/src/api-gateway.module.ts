@@ -22,13 +22,14 @@ import { FacebookStrategy } from './auth/strategy/facebook.stragety';
 import { PassportModule } from '@nestjs/passport';
 import { TwitterStrategy } from './auth/strategy/twitter.strategy';
 import { GoogleStrategy } from './auth/strategy/google-strategy';
-import { CloudinaryModule } from 'libs/cloudinary/cloudinary.module';
 import { AdminUserController } from './user/admin-user.controller';
 import { UserService } from './user/user.service';
 import { BullModule } from '@nestjs/bullmq';
 import { QueueName } from '@app/common/enums/queue/queue-name.enum';
 import { ProductController } from './product/product.controller';
 import { ProductService } from './product/product.service';
+import { CloudinaryConsoleModule } from '@app/common/cloudinary/cloudinary.module';
+import { CloudinaryModule } from 'libs/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -101,6 +102,7 @@ import { ProductService } from './product/product.service';
       ],
     }),
     PassportModule.register({ session: true }),
+    CloudinaryConsoleModule,
     CloudinaryModule,
   ],
   controllers: [AuthController, AdminUserController, ProductController],

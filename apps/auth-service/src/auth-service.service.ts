@@ -24,6 +24,7 @@ import { RpcException } from '@nestjs/microservices';
 import { TUserPayload } from '@app/common/types/user-payload.type';
 import { RETRIES_DEFAULT, TIMEOUT_MS_DEFAULT } from '@app/common/constant/rpc.constants';
 import { PayLoadJWT } from '@app/common/dto/user/sign-token.dto';
+import { UserStatus } from '@app/common/enums/user-status.enum';
 
 @Injectable()
 export class AuthService {
@@ -56,6 +57,18 @@ export class AuthService {
         code: HTTP_ERROR_CODE.UNAUTHORIZED,
         message: 'common.auth.invalidCredentials',
       });
+    if (userByEmail.status === UserStatus.INACTIVE.toString()) {
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.UNAUTHORIZED,
+        message: 'common.auth.inactiveAccount',
+      });
+    }
+    if (userByEmail.deletedAt) {
+      throw new TypedRpcException({
+        code: HTTP_ERROR_CODE.UNAUTHORIZED,
+        message: 'common.auth.invalidCredentials',
+      });
+    }
     const passwordLocal = userByEmail.authProviders?.find(
       (p) => p.provider === Provider.LOCAL,
     )?.password;

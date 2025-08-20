@@ -9,4 +9,5 @@ export interface RpcError {
     | Record<string, unknown>[]
     | Record<string, unknown[]>
     | unknown[];
+  args?: Record<string, unknown>;
 }

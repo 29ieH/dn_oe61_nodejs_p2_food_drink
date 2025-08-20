@@ -51,6 +51,7 @@ export function handlePrismaError(
   methodName: string,
   loggerService: CustomLogger,
 ): never {
+  loggerService.error(`[Error ${resource}.${methodName}]`, `Details:: ${(error as Error).stack}`);
   if (error instanceof PrismaClientKnownRequestError) {
     return logAndThrowPrismaClientError(error, loggerService, resource, methodName);
   }

@@ -4,6 +4,9 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ProductPattern } from '@app/common/enums/message-patterns/product.pattern';
 import { CreateProductDto } from '@app/common/dto/product/create-product.dto';
 import { ProductResponse } from '@app/common/dto/product/response/product-response';
+import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
+import { CartSummaryResponse } from '@app/common/dto/product/response/cart-summary.response';
+import { BaseResponse } from '@app/common/interfaces/data-type';
 
 @Controller()
 export class ProductServiceController {
@@ -17,5 +20,12 @@ export class ProductServiceController {
   @MessagePattern(ProductPattern.CREATE_PRODUCT)
   async createProduct(@Payload() payLoad: CreateProductDto): Promise<ProductResponse | null> {
     return await this.productService.createProduct(payLoad);
+  }
+
+  @MessagePattern(ProductPattern.ADD_PRODUCT_CART)
+  async addProductCart(
+    @Payload() payLoad: AddProductCartRequest,
+  ): Promise<BaseResponse<CartSummaryResponse>> {
+    return await this.productService.addProductCart(payLoad);
   }
 }
