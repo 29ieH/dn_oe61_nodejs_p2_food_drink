@@ -14,6 +14,8 @@ import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
 import * as prismaClientError from '@app/common/utils/prisma-client-error';
 import { StatusKey } from '@app/common/enums/status-key.enum';
 import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
+import { DeleteProductCartRequest } from '@app/common/dto/product/requests/delete-product-cart.request';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 jest.mock('class-validator', () => {
   const actual = jest.requireActual<typeof import('class-validator')>('class-validator');
@@ -69,6 +71,9 @@ interface MockPrismaTransaction {
         };
       }) => Promise<{ id: number }>
     >;
+    findMany: jest.MockedFunction<
+      (args: { where: { id: { in: number[] } } }) => Promise<{ id: number }[]>
+    >;
   };
   categoryProduct: {
     create: jest.MockedFunction<
@@ -108,6 +113,9 @@ interface MockPrismaTransaction {
     update: jest.MockedFunction<
       (args: { where: { id: number }; data: { quantity: number } }) => Promise<any>
     >;
+    deleteMany: jest.MockedFunction<
+      (args: { where: { cartId: number; productVariantId: number } }) => Promise<any>
+    >;
   };
 }
 
@@ -145,6 +153,9 @@ describe('ProductService', () => {
         >,
         findUnique: jest.fn() as jest.MockedFunction<
           (args: { where: { id: number } }) => Promise<{ id: number } | null>
+        >,
+        findMany: jest.fn() as jest.MockedFunction<
+          (args: { where: { id: { in: number[] } } }) => Promise<{ id: number }[]>
         >,
       },
       categoryProduct: {
@@ -191,6 +202,9 @@ describe('ProductService', () => {
         >,
         update: jest.fn() as jest.MockedFunction<
           (args: { where: { id: number }; data: { quantity: number } }) => Promise<any>
+        >,
+        deleteMany: jest.fn() as jest.MockedFunction<
+          (args: { where: { cartId: number; productVariantId: number } }) => Promise<any>
         >,
       },
       $transaction: jest.fn() as jest.MockedFunction<
@@ -335,6 +349,7 @@ describe('ProductService', () => {
             },
             productVariant: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -352,6 +367,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -411,6 +427,7 @@ describe('ProductService', () => {
             },
             productVariant: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -428,6 +445,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -460,6 +478,7 @@ describe('ProductService', () => {
             },
             productVariant: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -477,6 +496,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -507,6 +527,7 @@ describe('ProductService', () => {
             },
             productVariant: {
               create: jest.fn().mockRejectedValue(variantCreationError),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -524,6 +545,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -556,6 +578,7 @@ describe('ProductService', () => {
             },
             productVariant: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockRejectedValue(categoryCreationError),
@@ -573,6 +596,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -625,6 +649,7 @@ describe('ProductService', () => {
                   return Promise.resolve({ id: 1 });
                 },
               ),
+              findMany: jest.fn(),
             },
             categoryProduct: {
               create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -642,6 +667,7 @@ describe('ProductService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              deleteMany: jest.fn(),
             },
           };
           return await callback(prismaMock);
@@ -699,7 +725,6 @@ describe('ProductService', () => {
       );
     });
   });
-
   describe('addProductCart', () => {
     const mockAddProductCartRequest = {
       userId: 123,
@@ -749,11 +774,13 @@ describe('ProductService', () => {
       mockPrismaService.client.productVariant = {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn(),
       };
       mockPrismaService.client.cartItem = {
         findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        deleteMany: jest.fn(),
       };
     });
 
@@ -928,6 +955,198 @@ describe('ProductService', () => {
         expect(error).toBeInstanceOf(TypedRpcException);
         expect((error as TypedRpcException).getError()).toEqual(rpcError);
         expect((error as TypedRpcException).message).toEqual(rpcError.message);
+      }
+    });
+  });
+  describe('deleteProductCart', () => {
+    const mockDeleteProductCartRequest: DeleteProductCartRequest = {
+      userId: 123,
+      productVariantIds: [10],
+    };
+    const mockCart = { id: 1, userId: 123 };
+
+    const mockCartItem = {
+      id: 1,
+      quantity: 2,
+      cartId: 1,
+      productVariantId: 10,
+    };
+
+    const mockCartSummary = {
+      id: 1,
+      userId: 123,
+      items: [
+        {
+          id: 1,
+          quantity: 2,
+          productVariant: {
+            id: 10,
+            price: 29.99,
+          },
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      mockPrismaService.client.cart = {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        upsert: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        $transaction: jest.fn() as jest.MockedFunction<
+          (callback: TransactionCallback) => Promise<MockProduct>
+        >,
+      };
+      mockPrismaService.client.productVariant = {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+      };
+      mockPrismaService.client.cartItem = {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        deleteMany: jest.fn(),
+      };
+    });
+
+    it('should successfully delete product from cart', async () => {
+      const mockDto = { ...mockDeleteProductCartRequest };
+      mockPlainToInstance.mockReturnValue(mockDto);
+      mockValidateOrReject.mockResolvedValue(undefined);
+
+      (mockPrismaService.client.cart.findUnique as jest.Mock).mockResolvedValue(mockCart);
+
+      (mockPrismaService.client.productVariant.findMany as jest.Mock).mockResolvedValue(
+        mockDto.productVariantIds.map((id) => ({ id })),
+      );
+
+      (mockPrismaService.client.cartItem.deleteMany as jest.Mock).mockResolvedValue({
+        ...mockCartItem,
+        quantity: 0,
+      });
+
+      (mockPrismaService.client.cart.findUniqueOrThrow as jest.Mock).mockResolvedValue(
+        mockCartSummary,
+      );
+
+      const result = await service.deleteProductCart(mockDeleteProductCartRequest);
+
+      expect(mockPlainToInstance).toHaveBeenCalledWith(
+        DeleteProductCartRequest,
+        mockDeleteProductCartRequest,
+      );
+      expect(mockValidateOrReject).toHaveBeenCalledWith(mockDto);
+      expect(mockPrismaService.client.cart.findUnique).toHaveBeenCalledWith({
+        where: { userId: mockDeleteProductCartRequest.userId },
+      });
+      expect(mockPrismaService.client.productVariant.findMany).toHaveBeenCalledWith({
+        where: { id: { in: mockDto.productVariantIds } },
+        select: { id: true },
+      });
+      expect(mockPrismaService.client.cartItem.deleteMany).toHaveBeenCalledWith({
+        where: {
+          cartId: mockCart.id,
+          productVariantId: { in: mockDto.productVariantIds },
+        },
+      });
+      expect(result.statusKey).toBe(StatusKey.SUCCESS);
+      expect(mockPrismaService.client.cartItem.deleteMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw TypedRpcException when some products variant not found', async () => {
+      const mockDto = { ...mockDeleteProductCartRequest };
+      mockPlainToInstance.mockReturnValue(mockDto);
+      mockValidateOrReject.mockResolvedValue(undefined);
+
+      (mockPrismaService.client.cart.findUnique as jest.Mock).mockResolvedValue(mockCart);
+
+      (mockPrismaService.client.productVariant.findMany as jest.Mock).mockResolvedValue([
+        { id: mockDto.productVariantIds[0] },
+      ]);
+      try {
+        await service.deleteProductCart(mockDeleteProductCartRequest);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError().code).toBe(HTTP_ERROR_CODE.NOT_FOUND);
+        expect((error as TypedRpcException).getError().message).toBe(
+          'common.productVariant.someProductNotExist',
+        );
+        expect((error as TypedRpcException).getError().args).toEqual({
+          missingIds: mockDto.productVariantIds.slice(1).join(', '),
+        });
+      }
+    });
+
+    it('should throw TypedRpcException when multiple product variants requested but some not found', async () => {
+      const mockDto = {
+        userId: 123,
+        productVariantIds: [10, 20, 30],
+      };
+      mockPlainToInstance.mockReturnValue(mockDto);
+      mockValidateOrReject.mockResolvedValue(undefined);
+
+      (mockPrismaService.client.cart.findUnique as jest.Mock).mockResolvedValue(mockCart);
+      (mockPrismaService.client.productVariant.findMany as jest.Mock).mockResolvedValue([
+        { id: 10 },
+        { id: 20 },
+      ]);
+      try {
+        await service.deleteProductCart(mockDto);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError().code).toBe(HTTP_ERROR_CODE.NOT_FOUND);
+        expect((error as TypedRpcException).getError().message).toBe(
+          'common.product.someProductNotExist',
+        );
+        expect((error as TypedRpcException).getError().args).toEqual({
+          missingIds: '30',
+        });
+      }
+      expect(mockPrismaService.client.productVariant.findMany).toHaveBeenCalledWith({
+        where: { id: { in: [10, 20, 30] } },
+        select: { id: true },
+      });
+    });
+
+    it('should throw TypedRpcException when cart not found', async () => {
+      const mockDto = { ...mockDeleteProductCartRequest };
+      mockPlainToInstance.mockReturnValue(mockDto);
+      mockValidateOrReject.mockResolvedValue(undefined);
+      const rpcError = {
+        code: HTTP_ERROR_CODE.NOT_FOUND,
+        message: 'common.cart.notFound',
+      };
+      (mockPrismaService.client.cart.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.deleteProductCart(mockDeleteProductCartRequest)).rejects.toThrow(
+        new TypedRpcException(rpcError),
+      );
+
+      try {
+        await service.deleteProductCart(mockDeleteProductCartRequest);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError().code).toBe(HTTP_ERROR_CODE.NOT_FOUND);
+        expect((error as TypedRpcException).getError().message).toBe('common.cart.notFound');
+      }
+    });
+
+    it('should throw TypedRpcException when prisma error occurs', async () => {
+      const mockDto = { ...mockDeleteProductCartRequest };
+      mockPlainToInstance.mockReturnValue(mockDto);
+      mockValidateOrReject.mockResolvedValue(undefined);
+      (mockPrismaService.client.cart.findUnique as jest.Mock).mockRejectedValue(
+        new PrismaClientKnownRequestError('error', {
+          code: 'P2002',
+          clientVersion: '1.0.0',
+        }),
+      );
+      try {
+        await service.deleteProductCart(mockDeleteProductCartRequest);
+      } catch (error) {
+        expect(error).toBeInstanceOf(TypedRpcException);
+        expect((error as TypedRpcException).getError().code).toBe(HTTP_ERROR_CODE.CONFLICT);
       }
     });
   });

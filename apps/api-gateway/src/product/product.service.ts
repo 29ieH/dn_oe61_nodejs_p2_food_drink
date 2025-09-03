@@ -1,21 +1,17 @@
 import { PRODUCT_SERVICE } from '@app/common';
+import { CloudinaryService } from '@app/common/cloudinary/cloudinary.service';
 import { RETRIES_DEFAULT, TIMEOUT_MS_DEFAULT } from '@app/common/constant/rpc.constants';
 import { ProductDto } from '@app/common/dto/product/product.dto';
 import { ProductResponse } from '@app/common/dto/product/response/product-response';
 import { ProductPattern } from '@app/common/enums/message-patterns/product.pattern';
+import { StatusKey } from '@app/common/enums/status-key.enum';
 import { callMicroservice } from '@app/common/helpers/microservices';
 import { BaseResponse } from '@app/common/interfaces/data-type';
 import { CustomLogger } from '@app/common/logger/custom-logger.service';
+import { buildBaseResponse } from '@app/common/utils/data.util';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { I18nService } from 'nestjs-i18n';
-import { buildBaseResponse } from '@app/common/utils/data.util';
-import { StatusKey } from '@app/common/enums/status-key.enum';
-import { CloudinaryService } from '@app/common/cloudinary/cloudinary.service';
-import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
-import { CartSummaryResponse } from '@app/common/dto/product/response/cart-summary.response';
-import { TypedRpcException } from '@app/common/exceptions/rpc-exceptions';
-import { HTTP_ERROR_CODE } from '@app/common/enums/errors/http-error-code';
 
 @Injectable()
 export class ProductService {
@@ -68,21 +64,5 @@ export class ProductService {
       throw new BadRequestException(this.i18nService.translate('common.product.error.failed'));
     }
     return buildBaseResponse<ProductResponse>(StatusKey.SUCCESS, create);
-  }
-  async addProductCart(payload: AddProductCartRequest) {
-    if (!payload.userId)
-      throw new TypedRpcException({
-        code: HTTP_ERROR_CODE.UNAUTHORIZED,
-        message: 'common.error.unauthorized',
-      });
-    return await callMicroservice<BaseResponse<CartSummaryResponse>>(
-      this.productClient.send(ProductPattern.ADD_PRODUCT_CART, payload),
-      PRODUCT_SERVICE,
-      this.loggerService,
-      {
-        timeoutMs: TIMEOUT_MS_DEFAULT,
-        retries: RETRIES_DEFAULT,
-      },
-    );
   }
 }

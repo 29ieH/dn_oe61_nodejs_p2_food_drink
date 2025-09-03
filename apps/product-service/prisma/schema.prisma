@@ -28,20 +28,20 @@ model Category {
 }
 
 model Product {
-  id          Int           @id @default(autoincrement())
-  skuId       String        @unique @db.VarChar(30)
-  name        String        @db.VarChar(50)
+  id          Int               @id @default(autoincrement())
+  skuId       String            @unique @db.VarChar(30)
+  name        String            @db.VarChar(50)
   description String?
-  status      ProductStatus @default(IN_STOCK)
+  status      ProductStatus     @default(IN_STOCK)
   basePrice   Decimal
   quantity    Int
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime?     @updatedAt
-
-  images     ProductImage[]
-  variants   ProductVariant[]
-  reviews    Review[]
-  categories CategoryProduct[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime?         @updatedAt
+  deletedAt   DateTime?
+  images      ProductImage[]
+  variants    ProductVariant[]
+  reviews     Review[]
+  categories  CategoryProduct[]
 
   @@map("products")
 }

@@ -7,6 +7,7 @@ import { ProductResponse } from '@app/common/dto/product/response/product-respon
 import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
 import { CartSummaryResponse } from '@app/common/dto/product/response/cart-summary.response';
 import { BaseResponse } from '@app/common/interfaces/data-type';
+import { DeleteProductCartRequest } from '@app/common/dto/product/requests/delete-product-cart.request';
 
 @Controller()
 export class ProductServiceController {
@@ -27,5 +28,11 @@ export class ProductServiceController {
     @Payload() payLoad: AddProductCartRequest,
   ): Promise<BaseResponse<CartSummaryResponse>> {
     return await this.productService.addProductCart(payLoad);
+  }
+  @MessagePattern(ProductPattern.DELETE_PRODUCT_CART)
+  async deleteProductCart(
+    @Payload() payLoad: DeleteProductCartRequest,
+  ): Promise<BaseResponse<CartSummaryResponse>> {
+    return await this.productService.deleteProductCart(payLoad);
   }
 }

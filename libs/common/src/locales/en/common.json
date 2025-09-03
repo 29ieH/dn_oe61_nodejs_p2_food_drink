@@ -13,12 +13,14 @@
     "isInt": "{field} must be an integer",
     "isDateString": "{field} must be a valid ISO date string",
     "isUrl": "{field} must be a valid URL",
-    "isEnum":"{field} must be one of {enum}"
+    "isEnum":"{field} must be one of {enum}",
+    "arrayNotEmpty":"{field} should not be empty"
   },
   "product": {
     "invalidCredentials": "Invalid product information",
     "notFound":"Product not found",
     "quantityNotEnough":"Product quantity is not enough",
+    "someProductNotExist":"Some products do not exist. ProductIds: [{missingIds}]",
     "action": {
       "create": {
         "success": "New product successfully created"
@@ -29,6 +31,9 @@
       "filesExists": "Files not received yet",
       "failed": "Create failed"
     }
+  },
+  "cart": {
+    "notFound": "Cart not found"
   },
   "file": {
     "validation": {

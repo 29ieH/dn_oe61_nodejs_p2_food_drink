@@ -1,5 +1,6 @@
 import { CreateProductDto } from '@app/common/dto/product/create-product.dto';
 import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
+import { DeleteProductCartRequest } from '@app/common/dto/product/requests/delete-product-cart.request';
 import { DeleteSoftCartRequest } from '@app/common/dto/product/requests/delete-soft-cart.request';
 import { CartSummaryResponse } from '@app/common/dto/product/response/cart-summary.response';
 import { ProductResponse } from '@app/common/dto/product/response/product-response';
@@ -182,6 +183,66 @@ export class ProductService {
       }
       const cartSummary = await this.prismaService.client.cart.findUniqueOrThrow({
         where: { id: cart.id },
+        include: {
+          items: {
+            include: {
+              productVariant: { select: { id: true, price: true } },
+            },
+          },
+        },
+      });
+      return buildBaseResponse(StatusKey.SUCCESS, this.toCartSummaryResponse(cartSummary));
+    } catch (error) {
+      if (error instanceof TypedRpcException) {
+        throw error;
+      }
+      return handlePrismaError(error, ProductService.name, 'addProductCart', this.loggerService);
+    }
+  }
+  async deleteProductCart(
+    dto: DeleteProductCartRequest,
+  ): Promise<BaseResponse<CartSummaryResponse>> {
+    try {
+      const payload = plainToInstance(DeleteProductCartRequest, dto);
+      await validateOrReject(payload);
+      const cartDetail = await this.prismaService.client.cart.findUnique({
+        where: {
+          userId: dto.userId,
+        },
+      });
+      if (!cartDetail) {
+        throw new TypedRpcException({
+          code: HTTP_ERROR_CODE.NOT_FOUND,
+          message: 'common.cart.notFound',
+        });
+      }
+      const productVariants = await this.prismaService.client.productVariant.findMany({
+        where: { id: { in: dto.productVariantIds } },
+        select: { id: true },
+      });
+      const existingIds = productVariants.map((v) => v.id);
+      if (existingIds.length !== dto.productVariantIds.length) {
+        const notFoundProductVariantIds = dto.productVariantIds.filter(
+          (id) => !existingIds.includes(id),
+        );
+        if (notFoundProductVariantIds.length > 0) {
+          throw new TypedRpcException({
+            code: HTTP_ERROR_CODE.NOT_FOUND,
+            message: 'common.product.someProductNotExist',
+            args: {
+              missingIds: notFoundProductVariantIds.join(', '),
+            },
+          });
+        }
+      }
+      await this.prismaService.client.cartItem.deleteMany({
+        where: {
+          cartId: cartDetail.id,
+          productVariantId: { in: dto.productVariantIds },
+        },
+      });
+      const cartSummary = await this.prismaService.client.cart.findUniqueOrThrow({
+        where: { id: cartDetail.id },
         include: {
           items: {
             include: {

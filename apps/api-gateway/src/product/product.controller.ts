@@ -1,18 +1,14 @@
+import { COLUMN } from '@app/common/constant/column.constant';
+import { AuthRoles } from '@app/common/decorators/auth-role.decorator';
+import { ProductDto } from '@app/common/dto/product/product.dto';
+import { ProductResponse } from '@app/common/dto/product/response/product-response';
+import { Role } from '@app/common/enums/roles/users.enum';
+import { ParseCommaSeparatedFieldsInterceptor } from '@app/common/interceptors/form-data/parse-comma-separated-fields.interceptor';
+import { ParseJsonFieldsInterceptor } from '@app/common/interceptors/form-data/parse-json-fields.interceptor';
+import { BaseResponse } from '@app/common/interfaces/data-type';
 import { Body, Controller, Post, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
-import { ProductDto } from '@app/common/dto/product/product.dto';
-import { ParseJsonFieldsInterceptor } from '@app/common/interceptors/form-data/parse-json-fields.interceptor';
-import { ParseCommaSeparatedFieldsInterceptor } from '@app/common/interceptors/form-data/parse-comma-separated-fields.interceptor';
-import { BaseResponse } from '@app/common/interfaces/data-type';
-import { ProductResponse } from '@app/common/dto/product/response/product-response';
-import { AuthRoles } from '@app/common/decorators/auth-role.decorator';
-import { Role } from '@app/common/enums/roles/users.enum';
-import { COLUMN } from '@app/common/constant/column.constant';
-import { CurrentUser } from '@app/common';
-import { AccessTokenPayload } from '@app/common/interfaces/token-payload';
-import { AddProductCartRequest } from '@app/common/dto/product/requests/add-product-cart.request';
-import { AddProductPayload } from '@app/common/dto/product/requests/add-product-payload';
 
 @Controller('products')
 export class ProductController {
@@ -30,16 +26,5 @@ export class ProductController {
     @UploadedFiles() files: Array<Express.Multer.File>,
   ): Promise<BaseResponse<ProductResponse>> {
     return this.productService.create(input, files);
-  }
-  @Post('cart')
-  async addProductCart(
-    @CurrentUser() user: AccessTokenPayload,
-    @Body() payload: AddProductPayload,
-  ) {
-    const dto: AddProductCartRequest = {
-      userId: user.id,
-      ...payload,
-    };
-    return this.productService.addProductCart(dto);
   }
 }

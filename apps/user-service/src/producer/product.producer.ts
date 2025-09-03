@@ -15,7 +15,6 @@ export class ProductProducer {
   ) {}
   async addJobSoftDeleteCart(payload: DeleteSoftCartRequest) {
     try {
-      console.log('Add job soft delete cart');
       await addJobWithRetry(this.productQueue, ProductEvent.SOFT_DELETE_CART, payload);
     } catch (error) {
       this.loggerService.error(

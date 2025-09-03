@@ -12,12 +12,14 @@
     "isNumber": "{field} phải là số",
     "isInt": "{field} phải là số nguyên",
     "isDateString": "{field} phải là chuỗi ngày ISO hợp lệ",
-    "isUrl": "{field} phải là URL hợp lệ"
+    "isUrl": "{field} phải là URL hợp lệ",
+    "arrayNotEmpty":"{field} không được để trống"
   },
   "product": {
     "invalidCredentials": "Thông tin sản phẩm không chính xác",
     "notFound":"Sản phẩm không tồn tại",
     "quantityNotEnough":"Số lượng sản phẩm không đủ",
+    "someProductNotExist":"Một số sản phẩm không tồn tại. ProductIds: [{missingIds}]",
     "action": {
       "create": {
         "success": "Tạo mới sản phẩm thành công"
@@ -28,6 +30,9 @@
       "filesExists": "Chưa nhận được files",
       "failed": "Tạo mới thất bại"
     }
+  },
+  "cart":{
+    "notFound":"Không tìm thấy giỏ hàng"
   },
   "file": {
     "validation": {
