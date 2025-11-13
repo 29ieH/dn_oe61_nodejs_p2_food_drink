@@ -1,0 +1,11 @@
+{
+  "auth":{
+    "actions":{
+      "login":{
+        "success":"Ðăng nhập thành công",
+        "failed":"Ðăng nhập thất bại"
+      }
+    }
+  }
+}
+

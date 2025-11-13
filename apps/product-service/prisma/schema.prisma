@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+//Product service
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(50)
+  parentId  Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?  @updatedAt
+
+  products CategoryProduct[]
+  @@map("categories")
+}
+
+model Product {
+  id          Int                @id @default(autoincrement())
+  name        String             @db.VarChar(50)
+  description String?
+  status      ProductStatus      @default(IN_STOCK)
+  basePrice   Decimal
+  quantity    Int
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime?           @updatedAt
+
+  images    ProductImage[]
+  variants  ProductVariant[]
+  reviews   Review[]
+  categories CategoryProduct[]
+  @@map("products")
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  url       String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  deletedAt DateTime?
+
+  productId Int @unique
+  product   Product @relation(fields: [productId], references: [id])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id        Int      @id @default(autoincrement())
+  price     Decimal
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  productId Int @unique
+  sizeId    Int @unique
+
+  product Product @relation(fields: [productId], references: [id])
+  size    Size    @relation(fields: [sizeId], references: [id])
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  @@map("product_variants")
+}
+
+model Size {
+  id        Int      @id @default(autoincrement())
+  nameSize  String   @unique @db.VarChar(50)
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  variants ProductVariant[]
+  @@map("sizes")
+}
+
+model CategoryProduct {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  categoryId Int
+  productId  Int
+
+  category Category @relation(fields: [categoryId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@unique([categoryId, productId])
+  @@map("category_products")
+}
+
+model Cart {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?  @updatedAt
+
+  userId Int @unique
+
+  items CartItem[]
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  cartId          Int
+  productVariantId Int
+
+  cart          Cart            @relation(fields: [cartId], references: [id])
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+  @@map("cart_items")
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  status    OrderStatus @default(PENDING)
+  amount    Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  userId Int @unique
+
+  items    OrderItem[]
+  payment  Payment?
+  @@map("orders")
+}
+
+model Payment {
+  id        Int        @id @default(autoincrement())
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?   @updatedAt
+
+  orderId Int  @unique
+  order   Order @relation(fields: [orderId], references: [id])
+  @@map("payments")
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  quantity   Int
+  price     Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  orderId         Int @unique
+  productVariantId Int @unique
+
+  order          Order           @relation(fields: [orderId], references: [id])
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+  @@map("order_items")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Decimal
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  userId    Int @unique
+  productId Int @unique
+
+  product Product @relation(fields: [productId], references: [id])
+  @@map("reviews")
+}
+
+model Suggestion {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  imageUrl    String?  @db.VarChar(255)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  
+  userId Int @unique
+  @@map("suggestions")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum ProductStatus {
+  SOLD_OUT
+  IN_STOCK
+  PRE_SALE
+}

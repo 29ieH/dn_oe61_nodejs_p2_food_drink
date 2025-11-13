@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+//User service
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(50)
+  userName  String    @db.VarChar(50)
+  imageUrl  String?   @db.VarChar(255)
+  email     String    @db.VarChar(50)
+  password  String?    @db.VarChar(255)
+  provider  Provider  @default(LOCAL)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  
+  roleId Int @unique
+  role   Role        @relation(fields: [roleId], references: [id])
+
+  profile    UserProfile?
+  @@map("users")
+}
+
+model UserProfile {
+  id          Int      @id @default(autoincrement())
+  address     String?  @db.VarChar(255)
+  phoneNumber String?  @db.VarChar(20)
+  dob         DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime? @updatedAt
+
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id])
+  @@map("user_profiles")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  users User[]
+  @@map("roles")
+}
+
+enum Provider {
+  LOCAL
+  FACEBOOK
+  GOOGLE
+  TWITTER
+}

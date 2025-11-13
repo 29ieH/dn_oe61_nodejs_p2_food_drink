@@ -1,0 +1,10 @@
+{
+  "auth":{
+    "actions":{
+      "login":{
+        "success":"Login successfully",
+        "failed":"Login failed"
+      }
+    }
+  }
+}

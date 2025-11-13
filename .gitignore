@@ -20,3 +20,14 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+# node modules
+/node_modules
+# dist code
+/dist
+# Environment variables file
+**/.env
+# package json
+/package.json
+
+**/generated/prisma
+**/generated/prisma/migrations

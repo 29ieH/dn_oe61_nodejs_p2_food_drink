@@ -1,0 +1,2 @@
+export const PRISMA_OPTIONS = 'PRISMA_OPTIONS';
+export const PRISMA_CLIENT = 'PRISMA_CLIENT';
